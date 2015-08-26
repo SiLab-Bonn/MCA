@@ -65,3 +65,8 @@ target/
 
 # Project stuff not identified if needed
 /firmware/tb
+/firmware/ise/*
+/firmware/src/*
+!qmca.xise
+!*.v
+!*.ucf
