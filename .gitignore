@@ -55,3 +55,13 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# PyDev files
+*.project
+*.pydevproject
+*.vcd
+# Profiling files
+*.lprof
+
+# Project stuff not identified if needed
+/firmware/tb
