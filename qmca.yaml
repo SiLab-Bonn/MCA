@@ -1,0 +1,107 @@
+---
+name    : qmca 
+version : 0.01
+
+transfer_layer:
+  - name  : usb
+    type  : SiUsb
+    bit_file : "../firmware/ise/qmca.bit"
+    avoid_download : True     
+
+  - name  : Visa_sm
+    type  : Visa
+    init  :
+        resource_name : ASRL/dev/ttyUSB0
+        read_termination : "\r"
+        baud_rate : 19200
+        backend : "@py"
+        query_delay : 0.01 
+
+hw_drivers:
+  - name      : Sourcemeter
+    type      : scpi
+    interface : Visa_sm
+    init      :
+    device    : Keithley 2410
+
+  - name      : GPAC
+    type      : GPAC
+    interface : usb
+    base_addr : 0x00000
+
+  - name      : SPI_FADC
+    type      : spi
+    interface : usb
+    base_addr : 0x10000
+    mem_bytes : 2
+
+  - name      : GPIO_TH
+    type      : gpio
+    interface : usb
+    base_addr : 0x10100
+    size      : 16
+
+  - name      : fadc0_rx
+    type      : fadc_rx
+    interface : usb
+    base_addr : 0x10030
+
+  - name      : DATA_FIFO
+    type      : sram_fifo
+    interface : usb
+    base_addr : 0x10020 
+    base_data_addr: 0x0001000000000000
+
+  - name      : FADC_CONF
+    type      : FadcConf
+    hw_driver : SPI_FADC
+
+registers:
+
+  - name        : PWR0
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'PWR0'}
+
+  - name        : PWR1
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'PWR1'}
+
+  - name        : PWR2
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'PWR2'}
+
+  - name        : PWR3
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'PWR3'}
+
+  - name        : VSRC3
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC3'}
+    
+  - name        : VSRC2
+    type        : FunctionalRegister
+    hw_driver   : GPAC
+    arg_names   : [ value ]
+    arg_add     : { 'channel': 'VSRC2'}
+
+  - name        : TH
+    type        : StdRegister
+    hw_driver   : GPIO_TH
+    size        : 16
+    fields:
+      - name    : TH
+        size    : 14
+        offset  : 13
+      - name    : SEL_ADC_CH
+        size    : 2
+        offset  : 15
