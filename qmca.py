@@ -113,7 +113,7 @@ if __name__ == '__main__':
     
     print("Done! Recorded %1i events." % event_count)
     print "Shutting down Sourcemeter..."    
-    #dut['Sourcemeter'].off()
+    dut['Sourcemeter'].off()
     print "Done."
     
     
