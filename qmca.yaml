@@ -5,7 +5,7 @@ version : 0.01
 transfer_layer:
   - name  : usb
     type  : SiUsb
-    bit_file : "../firmware/ise/qmca.bit"
+    bit_file : "./firmware/ise/qmca.bit"
     avoid_download : True     
 
   - name  : Visa_sm

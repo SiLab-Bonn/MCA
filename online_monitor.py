@@ -1,18 +1,22 @@
+#
+# ------------------------------------------------------------
+# Copyright (c) All rights reserved 
+# SiLab, Institute of Physics, University of Bonn
+# ------------------------------------------------------------
+#
+
+
 import sys
 import zmq
-import time
 import numpy as np
-
 from basil import dut
-
 from PyQt4 import Qt
-from PyQt4.QtCore import pyqtSlot, pyqtSignal
+from PyQt4.QtCore import pyqtSlot
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
 import pyqtgraph.ptime as ptime
 from threading import Event
-
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
@@ -54,12 +58,14 @@ class DataWorker(QtCore.QObject):
                 shape = meta_data.pop('shape')
                 threshold = meta_data.pop('thr')
                 data_array = np.frombuffer(buf, dtype=dtype).reshape(shape)
-
-                self.histogram += np.histogram(np.amax(data_array), bins=self.histogram.shape[0], range=self.hist_range)[0]
+                
+                self.histogram += np.histogram(np.amax(data_array).sum(axis=0), bins=self.histogram.shape[0], range=self.hist_range)[0]
+                #for event_data in data_array:
                 self.interpreted_data.emit({
-                                            "waveform": data_array,
+                                            "waveform": data_array[0],
                                             "histogram": self.histogram,
-                                            "threshold": threshold
+                                            "threshold": threshold,
+                                            "n_actual_events": data_array.shape[0]
                                             })
             except zmq.Again:
                 pass
@@ -79,6 +85,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.fps = 0
         self.eps = 0  # events per second
         self.total_events = 0
+        self.total_readouts = 0
+        self.last_total_events = 0
         self.updateTime = ptime.time()
         self.total_events = 0
         self.setup_data_worker_and_start(socket_addr)
@@ -161,10 +169,11 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
     def on_interpreted_data(self, interpreted_data):
         self.update_plots(**interpreted_data)
 
-    def update_plots(self, waveform, histogram, threshold):
-        self.total_events += 1
-        if self.spin_box.value() > 0 and self.total_events % self.spin_box.value() == 0:  # only refresh plot every spin_box.value() readout 
-            self.waveform_plot.setData(x=range(0, 200), y=waveform, fillLevel=0, brush=(0, 0, 255, 150))
+    def update_plots(self, waveform, histogram, threshold, n_actual_events):
+        self.total_events += n_actual_events
+        self.total_readouts += 1
+        if self.spin_box.value() > 0 and self.total_readouts % self.spin_box.value() == 0:  # only refresh plot every spin_box.value() readout 
+            self.waveform_plot.setData(x=range(0, waveform.shape[0]), y=waveform, fillLevel=0, brush=(0, 0, 255, 150))
             self.histogram_plot.setData(x=range(0, n_bins + 1), y=histogram, fillLevel=0, brush=(0, 0, 255, 150))
             self.thr_line.setValue(threshold)
             self.thr_line_hist.setValue(threshold*n_bins/(2**14))
@@ -172,9 +181,10 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 
     def update_monitor(self):
         now = ptime.time()
-        recent_eps = 1. / (now - self.updateTime) * self.spin_box.value()
+        recent_eps = (self.total_events - self.last_total_events) / (now - self.updateTime)
+        self.last_total_events = self.total_events
         self.updateTime = now
-        self.eps = self.eps * 0.9 + recent_eps * 0.1
+        self.eps = self.eps * 0.98 + recent_eps * 0.02
         if self.spin_box.value() == 0:  # show number of events
             self.event_rate_label.setText("Total Events\n%d" % int(self.total_events))
         else:
