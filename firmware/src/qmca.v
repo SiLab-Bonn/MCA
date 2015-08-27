@@ -1,15 +1,12 @@
-`timescale 1ns / 1ps
-
 /**
- * Project: qmca
- * Author: Philipp Steingrebe <pstg@uni-bonn.de> <philipp@steingrebe.de>
- *
- * Base: ecpb01
- * Author: Theresa Obermann
+ * Project: qMCA
+ * Author: Michael Daas
  *
  * Copyright (c) All rights reserved
  * SiLab, Institute of Physics, University of Bonn
  */
+
+`timescale 1ns / 1ps
 
 module qmca (
 	// Base clock 48 MHz
@@ -21,54 +18,49 @@ module qmca (
 	input wire        usb_rd,
 	input wire        usb_wr,
 	 
-	 // USB high speed
-	//7inout wire  [7:0] usbh_data,
-	//input wire        usbh_rd,
-	//input wire        usbh_mode,
-	//input wire        usbh_strobe,
+   inout wire [7:0] FD,
+   input wire FREAD,
+   input wire FSTROBE,
+   input wire FMODE,
 
-    inout wire [7:0] FD,
-    input wire FREAD,
-    input wire FSTROBE,
-    input wire FMODE,
-
-    output wire [19:0] SRAM_A,
-    inout wire [15:0] SRAM_IO,
-    output wire SRAM_BHE_B,
-    output wire SRAM_BLE_B,
-    output wire SRAM_CE1_B,
-    output wire SRAM_OE_B,
-    output wire SRAM_WE_B,
+   output wire [19:0] SRAM_A,
+   inout wire [15:0] SRAM_IO,
+   output wire SRAM_BHE_B,
+   output wire SRAM_BLE_B,
+   output wire SRAM_CE1_B,
+   output wire SRAM_OE_B,
+   output wire SRAM_WE_B,
 
 
-    // DEBUG
-    output wire        led1,
-    output wire        led2,
-    output wire        led3,
-    output wire        led4,
-    output wire        led5,
-	 output wire  [1:0] lemo_tx,
+   // DEBUG
+   output wire        led1,
+   output wire        led2,
+   output wire        led3,
+   output wire        led4,
+   output wire        led5,
+	output wire  [1:0] lemo_tx,
     
-    // I2C
-	 inout sda,
-    inout scl,
+   // I2C
+	inout sda,
+   inout scl,
 
-    // FADC Config (SPI) 
-    output adc_csn,  // Chip Selection
-    output adc_sclk, // Data Clock
-    output adc_sdi,  // Slave Data In
-    input  adc_sdo,  // Slave Data Out
+   // FADC Config (SPI) 
+   output adc_csn,  // Chip Selection
+   output adc_sclk, // Data Clock
+   output adc_sdi,  // Slave Data In
+   input  adc_sdo,  // Slave Data Out
 
-    // FADC
-    output       adc_enc_p, // Encoder Clock
-    output       adc_enc_n,
-    input        adc_dco_p, // Data Clock
-    input        adc_dco_n,
-    input        adc_fco_p, // Frame Clock
-    input        adc_fco_n,
-    input  [3:0] adc_out_p, // Data Bits 1-4
-    input  [3:0] adc_out_n
+   // FADC
+   output       adc_enc_p, // Encoder Clock
+   output       adc_enc_n,
+   input        adc_dco_p, // Data Clock
+   input        adc_dco_n,
+   input        adc_fco_p, // Frame Clock
+   input        adc_fco_n,
+   input  [3:0] adc_out_p, // Data Bits 1-4
+   input  [3:0] adc_out_n
 );
+
 	//{{{ Const
 	// FADC SPI address space
 	localparam SPI_ADC_BASEADDR = 16'h0000;                 // 0x0000
@@ -78,16 +70,11 @@ module qmca (
    localparam FIFO_HIGHADDR = FIFO_BASEADDR + 15;          // 0x002f
 	 
    localparam ADC_RX_CH0_BASEADDR = 16'h0030;                 // 0x0030
-    localparam ADC_RX_CH0_HIGHADDR = ADC_RX_CH0_BASEADDR + 15; // 0x003f
+   localparam ADC_RX_CH0_HIGHADDR = ADC_RX_CH0_BASEADDR + 15; // 0x003f
 
-    localparam GPIO_TH_BASEADDR = 16'h0100;                 
-    localparam GPIO_TH_HIGHADDR = GPIO_TH_BASEADDR + 16'h00ff; 
+   localparam GPIO_TH_BASEADDR = 16'h0100;                 
+   localparam GPIO_TH_HIGHADDR = GPIO_TH_BASEADDR + 16'h00ff; 
 	 
-	// QMCA RX address space
-	//localparam QMCA_RX_BASEADDR = 16'h0020;                // 0x0020
-	//localparam QMCA_RX_HIGHADDR = QMCA_RX_BASEADDR + 15;   // 0x002f
-	// End Const }}}
-
 	/**
 	 * Debug
 	 * led1: SM State
@@ -185,15 +172,15 @@ module qmca (
 	 // Serial Peripheral Interface (SPI) bus to ADC
 	 
 	 wire CE_1HZ; // use for sequential logic
-	wire CLK_1HZ; // don't connect to clock input, only combinatorial logic
-	clock_divider #(
-		 .DIVISOR(30)
-	) i_clock_divisor_40MHz_to_1Hz (
-		 .CLK(spi_clk),
-		 .RESET(1'b0),
-		 .CE(CE_1HZ),
-		 .CLOCK(CLK_1HZ)
-	);
+	 wire CLK_1HZ; // don't connect to clock input, only combinatorial logic
+	 clock_divider #(
+			.DIVISOR(30)
+	 ) i_clock_divisor_40MHz_to_1Hz (
+			.CLK(spi_clk),
+			.RESET(1'b0),
+			.CE(CE_1HZ),
+			.CLOCK(CLK_1HZ)
+	 );
 
     wire adc_en;
 	 spi #( 
@@ -256,32 +243,7 @@ module qmca (
 	/**
 	 * Setup QMCA Readout
 	 */
-/*
-	qmca_rx #(
-		.BASEADDR(QMCA_RX_BASEADDR), 
-		.HIGHADDR(QMCA_RX_HIGHADDR)
-	) qmca_rx (
-		.bus_clk(bus_clk),    // (input) Bus clock
-		.bus_rst(bus_rst),    // (input)
-		
-		.adc_clk(adc_enc),    // (input) ADC frame/encoder clock
-		.adc_in0(adc_out[0]), // (input) ADC data channel 0
-		.adc_in1(adc_out[1]), // (input) ADC data channel 1
-		.adc_in2(adc_out[2]), // (input) ADC data channel 2
-		.adc_in3(adc_out[3]), // (input) ADC data channel 3
 
-		.bus_add(bus_add),    // (input)
-		.bus_data(usb_data),  // (inout)
-		.bus_rd(bus_rd),      // (input)
-		.bus_wr(bus_wr),      // (input)
-
-		.usb_data(usbh_data),
-		.usb_rd(usbh_rd & usbh_strobe),
-
-		.state({led[3], led[2], led[1], led[0]}),
-		.comp(lemo_tx[0])
-	);	 
-	*/
 
     wire [3:0] FIFO_EMPTY_ADC, FIFO_READ;
     wire [31:0] FIFO_DATA_ADC [3:0];
