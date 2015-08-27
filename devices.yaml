@@ -1,0 +1,16 @@
+transfer_layer:
+  - name  : Visa_sm
+    type  : Visa
+    init  :
+        resource_name : ASRL/dev/ttyUSB0
+        read_termination : "\r"
+        baud_rate : 19200
+        backend : "@py"
+        query_delay : 0.01 
+
+hw_drivers:
+  - name      : Sourcemeter
+    type      : scpi
+    interface : Visa_sm
+    init      :
+    device    : Keithley 2410
