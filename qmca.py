@@ -18,7 +18,7 @@ class qmca(object):
     '''Sets up qMCA setup. Reads data via USB from qMCA setup and sends it via ZeroMQ to Online Monitor.
     8000 Hz waveforms with 200 data points can be read out'''    
     
-    def __init__(self, sample_count=200, sample_delay=50, threshold=4000, channel=0, socket_addr='tcp://127.0.0.1:5678', write_after_n_events = 50000):
+    def __init__(self, sample_count=200, sample_delay=50, threshold=4000, channel=0, socket_addr='tcp://127.0.0.1:5678', write_after_n_events = 100000):
         '''
         Parameters
         ----------
@@ -58,12 +58,12 @@ class qmca(object):
         
         self.set_adc_differential_voltage(1.9)                                  # Set reference potential of differential ADC
         
-        self.dut['fadc0_rx'].reset()                                        # Clear FIFO and data-array
-        self.dut['DATA_FIFO'].reset()                                        # Clear FIFO and data-array
+        self.dut['fadc0_rx'].reset()                                            # Reset ADC
+        self.dut['DATA_FIFO'].reset()                                           # Reset FIFO
         
         
         # Setup ZeroMQ socket    
-        self.socket = zmq.Context().socket(zmq.PUSH)                            # push data non blocking
+        self.socket = zmq.Context().socket(zmq.PUSH)                            # Push data non blocking
         self.socket.bind(socket_addr)
         
         self.set_threshold(threshold)
@@ -148,8 +148,8 @@ class qmca(object):
             selection = np.where(single_data & 0x10000000 == 0x10000000)[0]         # Make mask from new-event-bit
             event_data = np.bitwise_and(single_data, 0x00003fff).astype(np.uint32)  # Remove new-event-bit from data       
             event_data = np.split(event_data, selection)                            # Split data into events by means of mask
-            event_data = event_data[1:-1]
-            event_data = np.vstack(event_data)
+            event_data = event_data[1:-1]                                           # Remove first and last event in case of chopping
+            event_data = np.vstack(event_data)                                      # Stack events together
             if event_data.shape[1] == self.sample_count:
                 return event_data
         except ValueError:
@@ -158,6 +158,7 @@ class qmca(object):
     def _main_loop(self):
         logging.info('Beginning measurement. Please open Online Monitor.')
         self.event_count = 0
+        last_mod_value = 0
         with tb.open_file(self.out_filename, 'w') as output_file:
             output_array = output_file.createEArray(output_file.root, name='event_data', atom=tb.UIntAtom(), shape=(0, self.sample_count), title='The raw events from the ADC', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
             while (self.run):
@@ -169,8 +170,9 @@ class qmca(object):
                     except ValueError:
                         print events_data, events_data.shape
                     self.event_count += events_data.shape[0]
-    #                 if (self.event_count % self.write_after_n_events == 0):
-    #                     logging.info('Recorded %d events. Write data to disk.', self.write_after_n_events)
-    #                     output_array.flush()
+                    if (self.event_count % self.write_after_n_events < last_mod_value):
+                        logging.info('Recorded %d events. Write data to disk.', self.write_after_n_events)
+                        output_array.flush()
+                    last_mod_value = self.event_count % self.write_after_n_events
             
             output_array.flush()
