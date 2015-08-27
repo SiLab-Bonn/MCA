@@ -63,6 +63,9 @@ target/
 # Profiling files
 *.lprof
 
+# Data files
+*.h5
+
 # Project stuff not identified if needed
 /firmware/tb
 /firmware/ise/*
