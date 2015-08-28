@@ -13,7 +13,6 @@ from cocotb.result import ReturnValue
 from cocotb.clock import Clock
 
 from basil.utils.BitLogic import BitLogic
-import random
 import numpy as np
 
 class MCAFileDriver(BusDriver):
@@ -26,14 +25,19 @@ class MCAFileDriver(BusDriver):
     @cocotb.coroutine
     def run(self):
         val = 0;
-        
+        bv = BitLogic(len(self.bus.ADC_CH0))
+
         while 1:
             yield RisingEdge(self.clock)
-            self.bus.ADC_CH0 <= BinaryValue(bits = len(self.bus.ADC_CH0), value= val % 2^14)
-            self.bus.ADC_CH1 <= BinaryValue(bits = len(self.bus.ADC_CH0), value= (val + 1024) % 2^14)
-            self.bus.ADC_CH2 <= BinaryValue(bits = len(self.bus.ADC_CH0), value= (val + 2 * 1048) % 2^14 )
-            self.bus.ADC_CH3 <= BinaryValue(bits = len(self.bus.ADC_CH0), value= (val + 3 * 1024) % 2^14 )
+            bv[:] = val % 2048
+            self.bus.ADC_CH0 <= BinaryValue(bits = len(self.bus.ADC_CH0), value = str(bv))
+            bv[:] = (val + 512) % 2048
+            self.bus.ADC_CH1 <= BinaryValue(bits = len(self.bus.ADC_CH0), value = str(bv))
+            bv[:] = (val + 1024) % 2048
+            self.bus.ADC_CH2 <= BinaryValue(bits = len(self.bus.ADC_CH0), value = str(bv))
+            bv[:] = (val + 3 * 512) % 2048
+            self.bus.ADC_CH3 <= BinaryValue(bits = len(self.bus.ADC_CH0), value = str(bv))
             
-            val += 1
+            val += 4
             
             

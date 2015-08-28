@@ -48,6 +48,28 @@ class TestSim(unittest.TestCase):
         self.chip.init()
 
     def test(self):
+    
+        self.chip['TH']['TH'] = int(1000)
+        self.chip['TH']['SEL_ADC_CH'] = 0
+        self.chip['TH'].write()
+    
+        self.chip['fadc0_rx'].reset()
+        self.chip['fadc0_rx'].set_data_count(100)
+        self.chip['fadc0_rx'].set_single_data(True)
+        self.chip['fadc0_rx'].set_delay(20)
+        self.chip['fadc0_rx'].set_en_trigger(True)
+        
+        self.chip['DATA_FIFO'].get_size()
+        for _ in range(100):
+            self.chip['DATA_FIFO'].get_size()
+        
+        self.chip['fadc0_rx'].set_en_trigger(False)
+        
+        for _ in range(2):
+            self.chip['DATA_FIFO'].get_size() 
+            
+        print self.chip['DATA_FIFO'].get_data()
+        
         self.assertEqual(True,False)
         
     def tearDown(self):

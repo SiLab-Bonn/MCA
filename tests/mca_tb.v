@@ -24,7 +24,6 @@
 `include "utils/cdc_pulse_sync.v"
 
 `include "utils/reset_gen.v"
-`include "utils/cdc_pulse_sync_cnt.v"
 `include "utils/pulse_gen_rising.v"
 `include "utils/CG_MOD_pos.v"
  
@@ -37,6 +36,8 @@
 `include "gpac_adc_rx/gpac_adc_iobuf.v"
 `include "gpac_adc_rx/gpac_adc_rx.v"
 `include "gpac_adc_rx/gpac_adc_rx_core.v"
+
+`include "utils/cdc_reset_sync.v"
 
 `include "ODDR.v"
 `include "DCM.v"
@@ -177,7 +178,7 @@ assign ADC_FCO = adc_cnt[3];
 assign ADC_CLK = ADC_ENC;
 
 wire adc_load;
-assign adc_load = (adc_cnt == 5);
+assign adc_load = (adc_cnt == 7);
 
 adc_ser_model i_adc_ser0(.CLK(ADC_DCO), .LOAD(adc_load), .DATA_IN(ADC_CH0), .DATA_OUT(ADC_DATA[0]));
 adc_ser_model i_adc_ser1(.CLK(ADC_DCO), .LOAD(adc_load), .DATA_IN(ADC_CH1), .DATA_OUT(ADC_DATA[1]));
