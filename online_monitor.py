@@ -59,7 +59,7 @@ class DataWorker(QtCore.QObject):
                 threshold = meta_data.pop('thr')
                 data_array = np.frombuffer(buf, dtype=dtype).reshape(shape)
                 
-                self.histogram += np.histogram(np.amax(data_array).sum(axis=0), bins=self.histogram.shape[0], range=self.hist_range)[0]
+                self.histogram += np.histogram(np.amax(data_array, axis=1), bins=n_bins, range=self.hist_range)[0]
                 #for event_data in data_array:
                 self.interpreted_data.emit({
                                             "waveform": data_array[0],
