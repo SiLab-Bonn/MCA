@@ -7,10 +7,24 @@ transfer_layer:
         baud_rate : 19200
         backend : "@py"
         query_delay : 0.01 
+        
+  - name     : Visa_tti
+    type     : Visa
+    init     :
+        resource_name : ASRL/dev/ttyUSB1
+        read_termination : "\r\n"
+        baud_rate : 19200
+        backend : "@py"
 
 hw_drivers:
   - name      : Sourcemeter
     type      : scpi
     interface : Visa_sm
     init      :
-    device    : Keithley 2410
+    device    : Keithley 2400
+    
+  - name      : TTi
+    type      : scpi
+    interface : Visa_tti
+    init      :
+        device : TTi QL335TP
