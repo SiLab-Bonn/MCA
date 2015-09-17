@@ -20,26 +20,21 @@ TODO
 ### Initialization
 On initialization, the qmca class object sets up the necessary power supplies on the GPAC card and sets the reference potential for the (differential) FADCs.
 The input parameters are:
-- *sample_count* : A number that defines the length of every event in ADC samples. The default value is 200 samples.
-- *sample_delay* : A number that defines, how many samples before the threshold crossing should be used in every event. The default value is 50. With the default settings, an event will be 200 samples long, with 50 samples before the threshold crossing and 150 samples afterwards.
-- *threshold* : A number between 0 and 2^14 that defines the threshold by which an event is defined. The default value is 4000.
-- *channel* : A number between 0 and 3 that defines the channel number to be read out.
-- *socket_addr* : Defines the socket for the ZeroMQ data stream.
-- *write_after_n_events* : A number that defines, after how many recorded events the data is written to disk.
+- 'sample_count' : A number that defines the length of every event in ADC samples. The default value is 200 samples.
+- 'sample_delay' : A number that defines, how many samples before the threshold crossing should be used in every event. The default value is 50. With the default settings, an event will be 200 samples long, with 50 samples before the threshold crossing and 150 samples afterwards.
+- 'threshold' : A number between 0 and 2^14 that defines the threshold by which an event is defined. The default value is 4000.
+- 'channel' : A number between 0 and 3 that defines the channel number to be read out.
+- 'socket_addr' : Defines the socket for the ZeroMQ data stream.
+- 'write_after_n_events' : A number that defines, after how many recorded events the data is written to disk.
 
 ### Changing settings
 The qmca class provides several methods to modify settings during runtime:
-- *set_threshold(threshold)* : Changes the threshold value.
-- *select_channel(channel)* : Changes the selected channel.
-- *set_adc_differential_voltage(value)* : Changes the reference potential for the differential ADCs.
-- *set_adc_eventsize(sample_count, sample_delay)* : Changes the total length (sample_count) of an event or 
+- 'set_threshold(threshold)' : Changes the threshold value.
+- 'select_channel(channel)' : Changes the selected channel.
+- 'set_adc_differential_voltage(value)' : Changes the reference potential for the differential ADCs.
+- 'set_adc_eventsize(sample_count, sample_delay)' : Changes the total length ('sample_count') of an event or the number of samples to take before the threshold crossing ('sample_delay')
 
 ### Usage
-After initialization, start the data acquisition by calling the *start(out_filename)* method and optionally specifying the filename for the data file. The main loop for data acquisition, that caches the data, writes it to disk and sends it to the OnlineMonitor is launched in an extra thread, so the calling script will not be halted.
-Options to monitor data acquisition are for example the elapsed time or the number of recorded events given by the class property *event_count*.
-After your requirements are met, stop the data acquisition by calling the *stop()* method.
-
-
-
-
-
+After initialization, start the data acquisition by calling the 'start(out_filename)' method and optionally specifying the filename for the data file. The main loop for data acquisition, that caches the data, writes it to disk and sends it to the OnlineMonitor is launched in an extra thread, so the calling script will not be halted.
+Options to monitor data acquisition are for example the elapsed time or the number of recorded events given by the class property 'event_count'.
+After your requirements are met, stop the data acquisition by calling the 'stop()' method.
