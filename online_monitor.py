@@ -20,7 +20,7 @@ from threading import Event
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
-n_bins = 512
+
 
 class DataWorker(QtCore.QObject):
     run_start = QtCore.pyqtSignal()
@@ -33,8 +33,9 @@ class DataWorker(QtCore.QObject):
         QtCore.QObject.__init__(self)
         self.integrate_readouts = 1
         self._stop_readout = Event()
+        self.n_bins = 512
         self.hist_range = (0, 2**14)
-        self.histogram = np.zeros(n_bins)
+        self.histogram = np.zeros(self.n_bins)
         
     def connect(self, socket_addr):
         self.socket_addr = socket_addr
@@ -52,6 +53,7 @@ class DataWorker(QtCore.QObject):
             try:
                 meta_data = self.socket_pull.recv_json(flags=zmq.NOBLOCK)
                 data = self.socket_pull.recv()
+                
                 # reconstruct numpy array
                 buf = buffer(data)
                 dtype = meta_data.pop('dtype')
@@ -59,10 +61,13 @@ class DataWorker(QtCore.QObject):
                 threshold = meta_data.pop('thr')
                 data_array = np.frombuffer(buf, dtype=dtype).reshape(shape)
                 
-                self.histogram += np.histogram(np.amax(data_array, axis=1), bins=n_bins, range=self.hist_range)[0]
+                hist, bin_edges = np.histogram(np.amax(data_array, axis=1), bins=self.n_bins, range=self.hist_range)
+                
+                self.histogram += hist
                 #for event_data in data_array:
                 self.interpreted_data.emit({
                                             "waveform": data_array[0],
+                                            "bin_edges": bin_edges,
                                             "histogram": self.histogram,
                                             "threshold": threshold,
                                             "n_actual_events": data_array.shape[0]
@@ -144,14 +149,14 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         dock_waveform.addWidget(waveform_widget)
 
         histogram_widget = pg.PlotWidget(background="w")
-        self.histogram_plot = histogram_widget.plot(range(0, n_bins + 1), np.zeros(shape=(n_bins)), stepMode=True)
+        self.histogram_plot = histogram_widget.plot(range(0, 2**14 + 1), np.zeros(shape=(2**14)), stepMode=True)
         histogram_widget.showGrid(y=True)
         dock_histogram.addWidget(histogram_widget)
         
         self.thr_line = pg.InfiniteLine(pos=1000, angle=0, pen={'color':0.0, 'style':QtCore.Qt.DashLine})
         waveform_widget.addItem(self.thr_line)
         
-        self.thr_line_hist = pg.InfiniteLine(pos=100, angle=90, pen={'color':0.0, 'style':QtCore.Qt.DashLine})
+        self.thr_line_hist = pg.InfiniteLine(pos=1000, angle=90, pen={'color':0.0, 'style':QtCore.Qt.DashLine})
         histogram_widget.addItem(self.thr_line_hist)
 
     @pyqtSlot()
@@ -169,14 +174,14 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
     def on_interpreted_data(self, interpreted_data):
         self.update_plots(**interpreted_data)
 
-    def update_plots(self, waveform, histogram, threshold, n_actual_events):
+    def update_plots(self, waveform, bin_edges, histogram, threshold, n_actual_events):
         self.total_events += n_actual_events
         self.total_readouts += 1
         if self.spin_box.value() > 0 and self.total_readouts % self.spin_box.value() == 0:  # only refresh plot every spin_box.value() readout 
             self.waveform_plot.setData(x=range(0, waveform.shape[0]), y=waveform, fillLevel=0, brush=(0, 0, 255, 150))
-            self.histogram_plot.setData(x=range(0, n_bins + 1), y=histogram, fillLevel=0, brush=(0, 0, 255, 150))
+            self.histogram_plot.setData(x=bin_edges, y=histogram, fillLevel=0, brush=(0, 0, 255, 150))
             self.thr_line.setValue(threshold)
-            self.thr_line_hist.setValue(threshold*n_bins/(2**14))
+            self.thr_line_hist.setValue(threshold)
             self.update_monitor()
 
     def update_monitor(self):
