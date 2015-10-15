@@ -143,12 +143,13 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         layout.setColumnStretch(2, 1)
         cw.setLayout(layout)
         self.event_rate_label = QtGui.QLabel("Event Rate\n0 Hz")
+        self.total_events_label = QtGui.QLabel("Total Events\n0")
         self.spin_box = Qt.QSpinBox(value=20, maximum=1000)
-        layout.addWidget(self.event_rate_label, 0, 1, 1, 2)
-        layout.addWidget(self.spin_box, 0, 3, 1, 1)
-        
         self.reset_button = Qt.QPushButton('Reset', self)
         self.reset_button.clicked.connect(self.reset_plots)
+        layout.addWidget(self.event_rate_label, 0, 1, 1, 1)
+        layout.addWidget(self.total_events_label, 1, 1, 1, 1)
+        layout.addWidget(self.spin_box, 0, 3, 1, 1)
         layout.addWidget(self.reset_button, 1, 3, 1, 1)
         
         dock_status.addWidget(cw)
@@ -199,10 +200,13 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.last_total_events = self.total_events
         self.updateTime = now
         self.eps = self.eps * 0.98 + recent_eps * 0.02
+        
         if self.spin_box.value() == 0:  # show number of events
             self.event_rate_label.setText("Total Events\n%d" % int(self.total_events))
         else:
             self.event_rate_label.setText("Event Rate\n%d Hz" % int(self.eps))
+            
+        self.total_events_label.setText("Total Events\n%d" % int(self.total_events))
             
             
     def reset_plots(self):
