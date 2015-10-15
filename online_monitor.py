@@ -144,7 +144,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         cw.setLayout(layout)
         self.event_rate_label = QtGui.QLabel("Event Rate\n0 Hz")
         self.spin_box = Qt.QSpinBox(value=20, maximum=1000)
-        layout.addWidget(self.event_rate_label, 0, 1, 1, 1)
+        layout.addWidget(self.event_rate_label, 0, 1, 1, 2)
         layout.addWidget(self.spin_box, 0, 3, 1, 1)
         
         self.reset_button = Qt.QPushButton('Reset', self)
@@ -224,7 +224,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 
 if __name__ == '__main__':
     app = Qt.QApplication(sys.argv)
-#     app.aboutToQuit.connect(myExitHandler)
+    app.setStyle('cleanlooks')
     win = OnlineMonitorApplication(socket_addr='tcp://127.0.0.1:5678')
     win.resize(800, 840)
     win.setWindowTitle('Online Monitor')
