@@ -47,6 +47,11 @@ class DataWorker(QtCore.QObject):
 
     def on_set_integrate_readouts(self, value):
         self.integrate_readouts = value
+        
+    def reset_hist(self):
+        hist, _ = np.histogram(np.zeros(200), bins=self.n_bins, range=self.hist_range)
+        self.histogram = hist
+        
 
     def process_data(self):  # infinite loop via QObject.moveToThread(), does not block event loop
         while(not self._stop_readout.wait(0.001)):  # use wait(), do not block here
@@ -93,7 +98,6 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.total_readouts = 0
         self.last_total_events = 0
         self.updateTime = ptime.time()
-        self.total_events = 0
         self.setup_data_worker_and_start(socket_addr)
 
     def closeEvent(self, event):
@@ -136,28 +140,33 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         cw = QtGui.QWidget()
         cw.setStyleSheet("QWidget {background-color:white}")
         layout = QtGui.QGridLayout()
+        layout.setColumnStretch(2, 1)
         cw.setLayout(layout)
         self.event_rate_label = QtGui.QLabel("Event Rate\n0 Hz")
         self.spin_box = Qt.QSpinBox(value=20, maximum=1000)
-        layout.addWidget(self.event_rate_label, 0, 4, 0, 1)
-        layout.addWidget(self.spin_box, 0, 6, 0, 1)
+        layout.addWidget(self.event_rate_label, 0, 1, 1, 1)
+        layout.addWidget(self.spin_box, 0, 3, 1, 1)
+        
+        self.reset_button = Qt.QPushButton('Reset', self)
+        self.reset_button.clicked.connect(self.reset_plots)
+        layout.addWidget(self.reset_button, 1, 3, 1, 1)
+        
         dock_status.addWidget(cw)
 
         # Different plot docks
         waveform_widget = pg.PlotWidget(background="w")
         self.waveform_plot = waveform_widget.plot(range(0, 200), np.zeros(shape=(200)))
+        self.thr_line = pg.InfiniteLine(pos=1000, angle=0, pen={'color':0.0, 'style':QtCore.Qt.DashLine})
+        waveform_widget.addItem(self.thr_line)
         dock_waveform.addWidget(waveform_widget)
 
         histogram_widget = pg.PlotWidget(background="w")
         self.histogram_plot = histogram_widget.plot(range(0, 2**14 + 1), np.zeros(shape=(2**14)), stepMode=True)
         histogram_widget.showGrid(y=True)
-        dock_histogram.addWidget(histogram_widget)
-        
-        self.thr_line = pg.InfiniteLine(pos=1000, angle=0, pen={'color':0.0, 'style':QtCore.Qt.DashLine})
-        waveform_widget.addItem(self.thr_line)
-        
         self.thr_line_hist = pg.InfiniteLine(pos=1000, angle=90, pen={'color':0.0, 'style':QtCore.Qt.DashLine})
         histogram_widget.addItem(self.thr_line_hist)
+        dock_histogram.addWidget(histogram_widget)
+ 
 
     @pyqtSlot()
     def on_run_start(self):
@@ -194,6 +203,23 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
             self.event_rate_label.setText("Total Events\n%d" % int(self.total_events))
         else:
             self.event_rate_label.setText("Event Rate\n%d Hz" % int(self.eps))
+            
+            
+    def reset_plots(self):
+        self.worker.reset_hist()
+        
+        self.total_events  = 0
+        self.total_readouts = 0
+        self.last_total_events = 0
+        self.updateTime = ptime.time()
+        self.fps = 0
+        self.eps = 0  # events per second
+        
+        self.waveform_plot.setData(x=range(0, 200), y=np.zeros(200), fillLevel=0, brush=(0, 0, 255, 150))
+        self.histogram_plot.setData(x=range(0, 2**14+1), y=np.zeros(2**14), fillLevel=0, brush=(0, 0, 255, 150))
+        self.thr_line.setValue(1000)
+        self.thr_line_hist.setValue(1000)
+        self.update_monitor()
 
 
 if __name__ == '__main__':
