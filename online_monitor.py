@@ -17,6 +17,9 @@ from pyqtgraph.Qt import QtCore, QtGui
 from pyqtgraph.dockarea import DockArea, Dock
 import pyqtgraph.ptime as ptime
 from threading import Event
+
+import psutil
+
 from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
 from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
 
@@ -52,7 +55,7 @@ class DataWorker(QtCore.QObject):
         hist, _ = np.histogram(np.zeros(200), bins=self.n_bins, range=self.hist_range)
         self.histogram = hist
         
-
+   # @profile
     def process_data(self):  # infinite loop via QObject.moveToThread(), does not block event loop
         while(not self._stop_readout.wait(0.001)):  # use wait(), do not block here
             try:
@@ -99,6 +102,7 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.last_total_events = 0
         self.updateTime = ptime.time()
         self.setup_data_worker_and_start(socket_addr)
+        self.cpu_load = max(psutil.cpu_percent(percpu=True))
 
     def closeEvent(self, event):
         super(OnlineMonitorApplication, self).closeEvent(event)
@@ -187,8 +191,10 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
     def update_plots(self, waveform, bin_edges, histogram, threshold, n_actual_events):
         self.total_events += n_actual_events
         self.total_readouts += 1
-        if self.spin_box.value() > 0 and self.total_readouts % self.spin_box.value() == 0:  # only refresh plot every spin_box.value() readout 
-            self.waveform_plot.setData(x=range(0, waveform.shape[0]), y=waveform, fillLevel=0, brush=(0, 0, 255, 150))
+        actual_cpu_load = max(psutil.cpu_percent(percpu=True))
+        self.cpu_load = 0.95 * self.cpu_load + 0.05 * actual_cpu_load
+        if self.cpu_load < 55 and self.spin_box.value() > 0 and self.total_readouts % self.spin_box.value() == 0:  # only refresh plot every spin_box.value() readout 
+            self.waveform_plot.setData(waveform, fillLevel=0, brush=(0, 0, 255, 150))
             self.histogram_plot.setData(x=bin_edges, y=histogram, fillLevel=0, brush=(0, 0, 255, 150))
             self.thr_line.setValue(threshold)
             self.thr_line_hist.setValue(threshold)
@@ -200,7 +206,6 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
         self.last_total_events = self.total_events
         self.updateTime = now
         self.eps = self.eps * 0.98 + recent_eps * 0.02
-        
         if self.spin_box.value() == 0:  # show number of events
             self.event_rate_label.setText("Total Events\n%d" % int(self.total_events))
         else:
@@ -229,6 +234,8 @@ class OnlineMonitorApplication(QtGui.QMainWindow):
 if __name__ == '__main__':
     app = Qt.QApplication(sys.argv)
     app.setStyle('cleanlooks')
+    pid = app.applicationPid()
+    print pid
     win = OnlineMonitorApplication(socket_addr='tcp://127.0.0.1:5678')
     #win.resize(800, 840)
     win.showMaximized()
