@@ -12,23 +12,23 @@ import zmq
 import tables as tb
 import logging
 
-#np.set_printoptions(formatter={'int':hex})
+np.set_printoptions(formatter={'int':hex})
 
 class qmca(object):    
     '''Sets up qMCA setup. Reads data via USB from qMCA setup and sends it via ZeroMQ to Online Monitor.
-    8000 Hz waveforms with 200 data points can be read out'''    
+    8000 Hz of waveforms with 200 samples can be read out'''    
     
-    def __init__(self, sample_count=200, sample_delay=50, threshold=4000, channel=0, socket_addr='tcp://127.0.0.1:5678', write_after_n_events = 100000):
+    def __init__(self, config='qmca.yaml', sample_count=200, sample_delay=50, threshold=2000, channel=0, adc_differential_voltage=1.9, socket_addr='tcp://127.0.0.1:5678', write_after_n_events = 100000):
         '''
         Parameters
         ----------
-        sample_count : number
+        sample_count : int
             Length of event in ADC samples
-        sample_delay : number
+        sample_delay : int
             Number of ADC samples to add to event before detected peak
-        threshold : number [0:2**14]
+        threshold : int [0:2**14]
             ADC threshold
-        channel : number [0:3]
+        channel : int [0:3]
             qMCA channel number
         outfile_name : string
             Filename of the raw data output file
@@ -36,10 +36,22 @@ class qmca(object):
             Socket address of Online Monitor
         '''
         
-        self.dut = Dut('qmca.yaml')
+        self.event_count = 0
+        self.count_lost = 0
+        self.main_thread = None
+        self.exit = threading.Event()
+        self.write_after_n_events = write_after_n_events
+        self.sample_count = sample_count
+        self.sample_delay = sample_delay
+        
+        # Setup ZeroMQ socket    
+        self.socket = zmq.Context().socket(zmq.PUSH)
+        self.socket.bind(socket_addr)
+        
+        # Setup Dut
+        self.dut = Dut(config)
         self.dut.init()
         
-        # Set up internal power supplies for all channels
         self.dut['PWR0'].set_current_limit(100, unit='mA')
         self.dut['PWR0'].set_voltage(1.8, unit='V')
         self.dut['PWR0'].set_enable(True)
@@ -56,24 +68,15 @@ class qmca(object):
         self.dut['PWR3'].set_voltage(1.8, unit='V')
         self.dut['PWR3'].set_enable(True)
         
-        self.set_adc_differential_voltage(1.9)                                  # Set reference potential of differential ADC
+        # Reset ADC and SRAM
+        self.dut['fadc0_rx'].reset()
+        self.dut['DATA_FIFO'].reset()
         
-        self.dut['fadc0_rx'].reset()                                            # Reset ADC
-        self.dut['DATA_FIFO'].reset()                                           # Reset FIFO
-        
-        
-        # Setup ZeroMQ socket    
-        self.socket = zmq.Context().socket(zmq.PUSH)                            # Push data non blocking
-        self.socket.bind(socket_addr)
-        
+        self.adc_differential_voltage = adc_differential_voltage
+        self.set_adc_differential_voltage(adc_differential_voltage)
+        self.set_adc_eventsize(self.sample_count, self.sample_delay)
         self.set_threshold(threshold)
         self.select_channel(channel)
-        self.set_adc_eventsize(sample_count, sample_delay)
-        
-        self.run = False
-        self.main_thread = None
-        
-        self.write_after_n_events = write_after_n_events
 
     
     def start(self, out_filename='event_data'):
@@ -81,17 +84,27 @@ class qmca(object):
         
         logging.info('Starting main loop in new thread.')
         self.main_thread = threading.Thread(target=self._main_loop)
-        self.run = True
         self.main_thread.start()
     
     def stop(self):
-        self.run  = False
+        self.exit.set()
         if self.main_thread:
             self.main_thread.join(timeout=1)
             self.main_thread = None
             logging.info('Measurement stopped. Recorded %i events.' % self.event_count)
         else:
             logging.info('No measurement was running.')
+
+    def reset_dut(self):
+        self.dut['fadc0_rx'].reset()
+        self.dut['DATA_FIFO'].reset()
+        
+        self.set_adc_differential_voltage(self.adc_differential_voltage)
+        self.set_adc_eventsize(self.sample_count, self.sample_delay)
+        
+        self.event_count = 0
+        self.count_lost = 0
+        self.main_thread = None
 
     def set_threshold(self, threshold):
         self.dut['TH']['TH'] = int(threshold)
@@ -104,6 +117,7 @@ class qmca(object):
         self.channel = channel
         
     def set_adc_differential_voltage(self, value):
+        self.adc_differential_voltage = value
         self.dut['VSRC3'].set_voltage(value, unit='V')
         
     def set_adc_eventsize(self, sample_count, sample_delay):
@@ -137,32 +151,43 @@ class qmca(object):
                 event_data : np.ndarray
                     Numpy array of single event numpy arrays 
         '''
-        count_lost = self.dut['fadc0_rx'].get_count_lost()
-        if count_lost > 0:
-            logging.error('SRAM FIFO overflow number %d. Skip data.', count_lost)
-            return
-
+        
+        self.count_lost = self.dut['fadc0_rx'].get_count_lost()
+#         print 'count_lost is %d' % self.count_lost
+#         print 'event_count is %d' % self.event_count
+        if self.count_lost > 0:
+            logging.error('SRAM FIFO overflow number %d. Skip data.', self.count_lost)
+            self.dut['fadc0_rx'].reset()
+            self.set_adc_eventsize(self.sample_count, self.sample_delay)
+            #return
+        
         single_data = self.dut['DATA_FIFO'].get_data()                          # Read raw data from SRAM
         
         try:
-            selection = np.where(single_data & 0x10000000 == 0x10000000)[0]         # Make mask from new-event-bit
-            event_data = np.bitwise_and(single_data, 0x00003fff).astype(np.uint32)  # Remove new-event-bit from data       
-            event_data = np.split(event_data, selection)                            # Split data into events by means of mask
-            event_data = event_data[1:-1]                                           # Remove first and last event in case of chopping
-            event_data = np.vstack(event_data)                                      # Stack events together
+            if single_data.shape[0] > 200:
+                selection = np.where(single_data & 0x10000000 == 0x10000000)[0]         # Make mask from new-event-bit
+                event_data = np.bitwise_and(single_data, 0x00003fff).astype(np.uint32)  # Remove new-event-bit from data       
+                event_data = np.split(event_data, selection)                            # Split data into events by means of mask
+                event_data = event_data[1:-1]                                           # Remove first and last event in case of chopping
+                event_data = np.vstack(event_data)                                      # Stack events together
+            else:
+                event_data = np.asarray([np.bitwise_and(single_data, 0x00003fff).astype(np.uint32)])
+
             if event_data.shape[1] == self.sample_count:
                 return event_data
-        except ValueError:
+        except ValueError as e:
+            logging.error('_record_data() experienced a ValueError: ' + str(e))
             return
- 
+
+
     def _main_loop(self):
         logging.info('Beginning measurement. Please open Online Monitor.')
-        self.event_count = 0
         last_mod_value = 0
-        with tb.open_file(self.out_filename, 'w') as output_file:
-            output_array = output_file.createEArray(output_file.root, name='event_data', atom=tb.UIntAtom(), shape=(0, self.sample_count), title='The raw events from the ADC', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
-            while (self.run):
+        with tb.open_file(self.out_filename, 'w') as self.output_file:
+            output_array = self.output_file.createEArray(self.output_file.root, name='event_data', atom=tb.UIntAtom(), shape=(0, self.sample_count), title='The raw events from the ADC', filters=tb.Filters(complib='blosc', complevel=5, fletcher32=False))
+            while not self.exit.wait(0.01):
                 events_data = self._record_data()
+                
                 if np.any(events_data):
                     self._send_data(events_data)
                     try:
