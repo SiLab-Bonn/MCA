@@ -6,74 +6,111 @@
 #
 
 import unittest
-
 from basil.dut import Dut
 from basil.utils.sim.utils import cocotb_compile_and_run, cocotb_compile_clean
-
 import yaml
 import os
 import sys
+import numpy as np
+from tempfile import NamedTemporaryFile
+import random
+
 sys.path.append(os.path.dirname(os.getcwd()))
+import qmca
+
+np.set_printoptions(formatter={'int':hex})
+
 
 
 class TestSim(unittest.TestCase):
-    def setUp(self):
+    def generate_data(self):
+        '''
+        Generates events for simulation
+        '''
+        data = [[], [], [], []]
+        outfile = NamedTemporaryFile(delete=False)
         
+        self.sample_count = 400 # Total length of event
+        self.sample_delay = 30  # Number of samples before rising edge / threshold crossing
+        baseline = random.randint(500,1000)
+        
+        for c in range(4):
+            for i in range(self.sample_count):
+                if i < self.sample_delay:
+                    val = baseline
+                elif i < 70:
+                    val = data[c][-1] + 275
+                elif i < 180:
+                    val = data[c][-1] - 100
+                else:
+                    val = baseline
+                data[c].append(val)
+                
+            for i in range(len(data[c])):
+                noise = random.randint(-500,500) 
+                data[c][i] = data[c][i] + noise
+                
+        npdata = np.asarray(data)
+        np.save(outfile, npdata)
+        outfile.close()
+        return outfile.name
+            
+    def setUp(self):
+        self.file_name = self.generate_data()
+
         cocotb_compile_and_run(
-            [os.getcwd() + '/mca_tb.v', '/cadence/xilinx/14.7/ISE_DS/ISE/verilog/src/glbl.v'], 
+            [os.getcwd() + '/mca_tb.v', '/opt/Xilinx/14.7/ISE_DS/ISE/verilog/src/glbl.v'], 
             sim_bus='basil.utils.sim.SiLibUsbBusDriver',
-            include_dirs = ('/cadence/xilinx/14.7/ISE_DS/ISE/verilog/src/unisims',),
-            extra = 'export SIMULATION_MODULES='+yaml.dump({'MCAFileDriver' : {}})
+            include_dirs = ('/opt/Xilinx/14.7/ISE_DS/ISE/verilog/src/unisims',),
+            extra = 'export SIMULATION_MODULES='+yaml.dump({'MCAFileDriver' : {'file_name': str(self.file_name)}})
             )
                 
-        cnfg = {}
         with open('../qmca.yaml', 'r') as f:
             cnfg = yaml.load(f)
             
         cnfg['transfer_layer'][0]['type'] = 'SiSim'
+        cnfg['hw_drivers'][0]['no_calibration'] = True
         
         # this should be based on some search
-        cnfg['transfer_layer'].remove(cnfg['transfer_layer'][1])
-        cnfg['hw_drivers'].remove(cnfg['hw_drivers'][1])
-        cnfg['hw_drivers'].remove(cnfg['hw_drivers'][0])
+        #cnfg['transfer_layer'].remove(cnfg['transfer_layer'][1])
+        #cnfg['hw_drivers'].remove(cnfg['hw_drivers'][1])
+        #cnfg['hw_drivers'].remove(cnfg['hw_drivers'][0])
         
-        cnfg['registers'].remove(cnfg['registers'][5])
-        cnfg['registers'].remove(cnfg['registers'][4])
-        cnfg['registers'].remove(cnfg['registers'][3])
-        cnfg['registers'].remove(cnfg['registers'][2])
-        cnfg['registers'].remove(cnfg['registers'][1])
-        cnfg['registers'].remove(cnfg['registers'][0])
+        #cnfg['registers'].remove(cnfg['registers'][5])
+        #cnfg['registers'].remove(cnfg['registers'][4])
+        #cnfg['registers'].remove(cnfg['registers'][3])
+        #cnfg['registers'].remove(cnfg['registers'][2])
+        #cnfg['registers'].remove(cnfg['registers'][1])
+        #cnfg['registers'].remove(cnfg['registers'][0])
         
-        self.chip = Dut(cnfg)
-        self.chip.init()
+        self.ch = 0 # Channel to use
+        self.ev = 0 # Event to use
+        self.th = 2500  # Threshold
+        
+        self.my_qmca = qmca.qmca(config=cnfg, channel=self.ch, sample_count=self.sample_count, sample_delay=self.sample_delay, threshold=self.th)
 
     def test(self):
-    
-        self.chip['TH']['TH'] = int(1000)
-        self.chip['TH']['SEL_ADC_CH'] = 0
-        self.chip['TH'].write()
-    
-        self.chip['fadc0_rx'].reset()
-        self.chip['fadc0_rx'].set_data_count(100)
-        self.chip['fadc0_rx'].set_single_data(True)
-        self.chip['fadc0_rx'].set_delay(20)
-        self.chip['fadc0_rx'].set_en_trigger(True)
-        
-        self.chip['DATA_FIFO'].get_size()
+        # Wait a while
         for _ in range(100):
-            self.chip['DATA_FIFO'].get_size()
+            self.my_qmca.dut['DATA_FIFO'].get_size()
         
-        self.chip['fadc0_rx'].set_en_trigger(False)
+        # Record some events
+        event_data = self.my_qmca._record_data()
         
-        for _ in range(2):
-            self.chip['DATA_FIFO'].get_size() 
-            
-        print self.chip['DATA_FIFO'].get_data()
+        # Load the simulated event...
+        start_data = np.load(self.file_name)
+        # ... and shift it according to set threshold
+        for i in range(start_data.shape[1]):
+            if start_data[self.ch][i] >= self.th:
+                break
+        dly = i - self.sample_delay
+        start_data_dly = start_data[self.ch][dly:]
         
-        self.assertEqual(True,False)
+        # Compare simulated and recorded events
+        comp = (event_data[self.ev][:-dly] == start_data_dly)
+        self.assertTrue(comp.all())
         
     def tearDown(self):
-        self.chip.close()  # let it close connection and stop simulator
         cocotb_compile_clean()
 
 if __name__ == '__main__':
