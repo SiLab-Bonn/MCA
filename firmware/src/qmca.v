@@ -124,11 +124,8 @@ module qmca (
         .ADC_ENC(adc_enc),   // (Output) ADC encoder Clock
         .ADC_CLK(adc_clk),   // (Output) ADC readout Clock
           
-        .LOCKED(clk_locked), // (Output) PLL locked
-          
-          // Unused
-        .U2_CLK40(),
-        .U2_CLK320()
+        .LOCKED(clk_locked) // (Output) PLL locked
+
     );
 
 

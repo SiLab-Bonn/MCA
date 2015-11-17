@@ -16,14 +16,11 @@ module qmca_clk_gen(
 	 
     output ADC_ENC, // ADC_ENC is 10 MHz ( 80M / 8 = 10 M)		output from 2. DCM
     output ADC_CLK, // ADC_CLK is 160 MHz ( 80M * 2 = 160 M)  	output from 1. DCM
-
-    output U2_CLK40,  // TDC			40M currently					output from 2. DCM
-    output U2_CLK320, // TDC			320M currently					output from 2. DCM
 	 
     output LOCKED
     );
 
-    wire CLK2_FX_BUF;
+
     wire GND_BIT;
     assign GND_BIT = 0;
     wire CLKD10MHZ;
@@ -34,11 +31,9 @@ module qmca_clk_gen(
     wire CLKFX_160FB; // Feedback to DCM2 (buffered input of DCM2)
 
     wire CLKOUT160, CLKDV_10;
-    wire CLK2_0, CLK2_FX;
+    wire CLK2_0;
     wire CLKFX_40;
 
-    wire CLK2X_320M;
-    wire CLK2X_320M_BUF;
 	 
     wire CLKFX_160;
 
@@ -50,26 +45,22 @@ module qmca_clk_gen(
     wire U2_OR3_O_OUT;
     wire U2_RST_IN;
 
-
+	 wire CLK0_XU2_BUF;
+	
     assign ADC_ENC = CLKD10MHZ;
+    //assign ADC_CLK = CLKFX_160FB; //CLK0_XU2_BUF
+	 //assign ADC_CLK = CLK0_XU2_BUF;
     assign ADC_CLK = CLKOUT160;
 
-	 assign U2_CLK40 = CLK2_FX_BUF;
-	 assign U2_CLK320 = CLK2X_320M_BUF;
-
     BUFG CLKFX_BUFG_INST (.I(CLKFX_BUF), .O(CLKOUTFX)); 
-    
 	 BUFG CLKFB_BUFG_INST (.I(CLK0_BUF), .O(BUS_CLK));
-	 
     BUFG CLKDV_BUFG_INST (.I(CLKDV), .O(CLKDV_BUF));
 
     assign SPI_CLK = CLKDV_BUF;
 
 
-   
 	// First DCM gets 48 MHz clock
 	// --> Makes 160 MHz output on CLKFX (48 * 10/3) for next DCM as input and for ADC_CLK
-	// --> Makes 12 MHz output on CLKDV (48 / 4) for SPI_CLK
    DCM #(
          .CLKDV_DIVIDE(16), // Divide by: 1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5
          // 7.0,7.5,8.0,9.0,10.0,11.0,12.0,13.0,14.0,15.0 or 16.0
@@ -110,16 +101,14 @@ module qmca_clk_gen(
 
 	// buffer 160 M output from DCM1 and use buffered 160 M as input to DCM2
    BUFG CLKFX_2_BUFG_INST (.I(CLKFX_160), .O(CLKOUT160));
-	
    BUFG CLKDV_2_BUFG_INST (.I(CLKDV_10), .O(CLKD10MHZ));
+	
 	
 	// buffer input to DCM2 (160 MHz) and use as feedback for DCM2
    BUFG CLKFB_2_BUFG_INST (.I(CLK2_0), .O(CLKFX_160FB));
-   
-	BUFG CLKFX2_2_BUFG_INST (.I(CLK2_FX), .O(CLK2_FX_BUF));
-
-
-	BUFG CLK2X_320_BUFG_INST (.I(CLK2X_320M), .O(CLK2X_320M_BUF));
+ 
+	wire CLK0_XU2;
+   BUFG CLKFB_2_BUFG_CLK0_XU2 (.I(CLK0_XU2), .O(CLK0_XU2_BUF));
 
 	// Second DCM gets 160 MHz clock
 	// --> Makes 320 MHz output on CLK2X for TDC_320_CLK
@@ -147,11 +136,11 @@ module qmca_clk_gen(
          .CLK0(CLK2_0), // 0 degree DCM_SP CLK output
          .CLK180(), // 180 degree DCM_SP CLK output
          .CLK270(), // 270 degree DCM_SP CLK output
-         .CLK2X(CLK2X_320M), // 2X DCM_SP CLK output    -------------------------------320 M TDC_320_CLK
+         .CLK2X(), // 2X DCM_SP CLK output   
          .CLK2X180(), // 2X, 180 degree DCM_SP CLK out
-         .CLK90(), // 90 degree DCM_SP CLK output
-         .CLKDV(CLKDV_10), // Divided DCM_SP CLK out (CLKDV_DIVIDE) -------------------------------10 M ADC_ENC
-         .CLKFX(CLK2_FX), // DCM_SP CLK synthesis out (M/D) -------------------------------40 M TDC_40_CLK
+         .CLK90(CLK0_XU2), // 90 degree DCM_SP CLK output
+         .CLKDV(CLKDV_10), // Divided DCM_SP CLK out (CLKDV_DIVIDE) 
+         .CLKFX(), // DCM_SP CLK synthesis out (M/D) 
          .CLKFX180(), // 180 degree CLK synthesis out
          .LOCKED(), // DCM_SP LOCK status output
          .PSDONE(), // Dynamic phase adjust done output
