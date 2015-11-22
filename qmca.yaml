@@ -6,14 +6,14 @@ transfer_layer:
   - name  : usb
     type  : SiUsb
     bit_file : "./firmware/ise/qmca.bit"
-    avoid_download : False
+    avoid_download : True
 
 hw_drivers:
   - name      : GPAC
     type      : GPAC
     interface : usb
     base_addr : 0x00000
-
+    
   - name      : SPI_FADC
     type      : spi
     interface : usb

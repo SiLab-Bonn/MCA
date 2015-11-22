@@ -1,30 +1,31 @@
 transfer_layer:
-  - name  : Visa_sm
+  - name  : Visa_sm1
     type  : Visa
     init  :
-        resource_name : ASRL/dev/ttyUSB0
+        resource_name    : ASRL/dev/ttyUSB0
         read_termination : "\r"
-        baud_rate : 19200
-        backend : "@py"
-        query_delay : 0.01 
+        baud_rate        : 19200
+        backend          : "@py"
+        query_delay      : 0.01 
         
-  - name     : Visa_tti
-    type     : Visa
-    init     :
-        resource_name : ASRL/dev/ttyUSB1
-        read_termination : "\r\n"
-        baud_rate : 19200
-        backend : "@py"
-
+  - name  : Visa_sm2
+    type  : Visa
+    init  :
+        resource_name    : ASRL/dev/ttyUSB1
+        read_termination : "\r"
+        baud_rate        : 19200
+        backend          : "@py"
+        query_delay      : 0.01 
+        
 hw_drivers:
-  - name      : Sourcemeter
+  - name      : Sourcemeter1
     type      : scpi
-    interface : Visa_sm
+    interface : Visa_sm1
     init      :
-    device    : Keithley 2400
-    
-  - name      : TTi
+         device    : Keithley 2410
+         
+  - name      : Sourcemeter2
     type      : scpi
-    interface : Visa_tti
+    interface : Visa_sm2
     init      :
-        device : TTi QL335TP
+         device    : Keithley 2400
