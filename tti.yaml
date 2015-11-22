@@ -1,0 +1,15 @@
+transfer_layer:
+ - name     : Visa_tti
+   type     : Visa
+   init     :
+       resource_name    : ASRL/dev/ttyUSB2
+       read_termination : "\r\n"
+       baud_rate        : 19200
+       backend          : "@py"
+
+hw_drivers:
+  - name      : TTi
+    type      : scpi
+    interface : Visa_tti
+    init      :
+        device : TTi QL335TP
