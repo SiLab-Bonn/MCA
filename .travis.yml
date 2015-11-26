@@ -17,7 +17,17 @@ install:
   - sudo apt-get install -qq iverilog-daily
   - sudo apt-get install -qq libhdf5-serial-dev
   
-  - pip install bitarray pyyaml nose zmq tables
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - bash miniconda.sh -b -p $HOME/miniconda
+  - export PATH="$HOME/miniconda/bin:$PATH"
+  - conda update --yes conda
+  - conda config --add channels silab
+  - conda info -a
+  - conda create --yes -n test-environment numpy pytables bitarray nose pyzmq pyyaml
+  - source activate test-environment
+  
+  #- pip install bitarray pyyaml nose zmq tables
   
   - git clone https://github.com/potentialventures/cocotb.git
   - export COCOTB=$(pwd)/cocotb
