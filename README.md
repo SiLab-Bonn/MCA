@@ -1,4 +1,7 @@
 # MCA
+
+[![Build Status](https://travis-ci.org/SiLab-Bonn/MCA.svg?branch=master)](https://travis-ci.org/SiLab-Bonn/MCA)
+
 Multi Channel Analyzer
 This project provides firmware and software for the qMCA setup.
 
