@@ -33,32 +33,25 @@ module qmca_clk_gen(
     wire CLKOUT160, CLKDV_10;
     wire CLK2_0;
     wire CLKFX_40;
-
-	 
+ 
     wire CLKFX_160;
 
-    wire U2_LOCKED_INV_RST;
-    wire U2_FDS_Q_OUT;
-    wire U2_FD1_Q_OUT;
-    wire U2_FD2_Q_OUT;
-    wire U2_FD3_Q_OUT;
-    wire U2_OR3_O_OUT;
     wire U2_RST_IN;
 
-	 wire CLK0_XU2_BUF;
-	
+    wire CLK0_XU2_BUF;
+
     assign ADC_ENC = CLKD10MHZ;
     //assign ADC_CLK = CLKFX_160FB; //CLK0_XU2_BUF
-	 //assign ADC_CLK = CLK0_XU2_BUF;
+    //assign ADC_CLK = CLK0_XU2_BUF;
     assign ADC_CLK = CLKOUT160;
 
     BUFG CLKFX_BUFG_INST (.I(CLKFX_BUF), .O(CLKOUTFX)); 
-	 BUFG CLKFB_BUFG_INST (.I(CLK0_BUF), .O(BUS_CLK));
+    BUFG CLKFB_BUFG_INST (.I(CLK0_BUF), .O(BUS_CLK));
     BUFG CLKDV_BUFG_INST (.I(CLKDV), .O(CLKDV_BUF));
 
     assign SPI_CLK = CLKDV_BUF;
 
-
+    wire LOCKED_U1;
 	// First DCM gets 48 MHz clock
 	// --> Makes 160 MHz output on CLKFX (48 * 10/3) for next DCM as input and for ADC_CLK
    DCM #(
@@ -95,7 +88,7 @@ module qmca_clk_gen(
          .CLK90(), 
          .CLK180(), 
          .CLK270(), 
-         .LOCKED(LOCKED), 
+         .LOCKED(LOCKED_U1), 
          .PSDONE(), 
          .STATUS());
 
@@ -115,7 +108,7 @@ module qmca_clk_gen(
 	// --> Makes 40 MHz output on CLKFX (1 / 4) for TDC_40_CLK
 	// --> Makes 10 MHz output on CLKDV (1 / 16) for ADC_ENC
    DCM #(
-         .CLKDV_DIVIDE(16.0), // Divide by: 1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5
+         .CLKDV_DIVIDE(16), // Divide by: 1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5
          // 7.0,7.5,8.0,9.0,10.0,11.0,12.0,13.0,14.0,15.0 or 16.0
          .CLKFX_DIVIDE(8), // Can be any Integer from 1 to 32
          .CLKFX_MULTIPLY(2), // Can be any Integer from 2 to 32
@@ -142,7 +135,7 @@ module qmca_clk_gen(
          .CLKDV(CLKDV_10), // Divided DCM_SP CLK out (CLKDV_DIVIDE) 
          .CLKFX(), // DCM_SP CLK synthesis out (M/D) 
          .CLKFX180(), // 180 degree CLK synthesis out
-         .LOCKED(), // DCM_SP LOCK status output
+         .LOCKED(LOCKED), // DCM_SP LOCK status output
          .PSDONE(), // Dynamic phase adjust done output
          .STATUS(), // 8-bit DCM_SP status bits output
          .CLKFB(CLKFX_160FB), // DCM_SP clock feedback
@@ -152,31 +145,12 @@ module qmca_clk_gen(
          .PSINCDEC(GND_BIT), // Dynamic phase adjust increment/decrement
          .RST(U2_RST_IN)// // DCM_SP asynchronous reset input
      );
-	  
-	  INV  U1_INV_INST (.I(LOCKED), 
-					  .O(U2_LOCKED_INV_RST));
 
-		FDS  U2_FDS_INST (.C(BUS_CLK), 
-							  .D(GND_BIT), 
-							  .S(GND_BIT), 
-							  .Q(U2_FDS_Q_OUT));
-		FD  U2_FD1_INST (.C(BUS_CLK), 
-							 .D(U2_FDS_Q_OUT), 
-							 .Q(U2_FD1_Q_OUT));
-		FD  U2_FD2_INST (.C(BUS_CLK), 
-							 .D(U2_FD1_Q_OUT), 
-							 .Q(U2_FD2_Q_OUT));
-		FD  U2_FD3_INST (.C(BUS_CLK), 
-							 .D(U2_FD2_Q_OUT), 
-							 .Q(U2_FD3_Q_OUT));
-		OR2  U2_OR2_INST (.I0(U2_LOCKED_INV_RST), 
-							  .I1(U2_OR3_O_OUT), 
-							  .O(U2_RST_IN));
-		OR3  U2_OR3_INST (.I0(U2_FD3_Q_OUT), 
-							  .I1(U2_FD2_Q_OUT), 
-							  .I2(U2_FD1_Q_OUT), 
-							  .O(U2_OR3_O_OUT));
-	  
-	  
+    reg [3:0] rst_dly;
+    initial rst_dly = 0;
+    always@(posedge BUS_CLK)
+        rst_dly <= {rst_dly[2:0], !LOCKED_U1};
+        
+    assign U2_RST_IN = rst_dly[3];
      
 endmodule
