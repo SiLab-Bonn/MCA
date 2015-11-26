@@ -15,6 +15,7 @@ before_install:
 
 install:
   - sudo apt-get install -qq iverilog-daily
+  - sudo apt-get install -qq libhdf5-serial-dev
   
   - pip install bitarray pyyaml nose zmq tables
   
