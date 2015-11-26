@@ -16,7 +16,7 @@ before_install:
 install:
   - sudo apt-get install -qq iverilog-daily
   
-  - pip install bitarray pyyaml nose zmq
+  - pip install bitarray pyyaml nose zmq tables
   
   - git clone https://github.com/potentialventures/cocotb.git
   - export COCOTB=$(pwd)/cocotb
