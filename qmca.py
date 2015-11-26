@@ -121,9 +121,9 @@ class qmca(object):
         self.dut['VSRC3'].set_voltage(value, unit='V')
         
     def set_adc_eventsize(self, sample_count, sample_delay):
+        self.dut['fadc0_rx'].set_delay(sample_delay)
         self.dut['fadc0_rx'].set_data_count(sample_count)
         self.dut['fadc0_rx'].set_single_data(True)
-        self.dut['fadc0_rx'].set_delay(sample_delay)
         self.dut['fadc0_rx'].set_en_trigger(True)
         
         self.sample_count = sample_count

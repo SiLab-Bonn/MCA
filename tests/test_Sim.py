@@ -15,11 +15,13 @@ import numpy as np
 from tempfile import NamedTemporaryFile
 import random
 
-sys.path.append(os.path.dirname(os.getcwd()))
+import sys
+qmca_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) #../
+sys.path.append( qmca_dir ) 
+
 import qmca
 
 np.set_printoptions(formatter={'int':hex})
-
 
 
 class TestSim(unittest.TestCase):
@@ -58,10 +60,11 @@ class TestSim(unittest.TestCase):
     def setUp(self):
         self.file_name = self.generate_data()
 
+        
         cocotb_compile_and_run(
-            [os.getcwd() + '/mca_tb.v', '/opt/Xilinx/14.7/ISE_DS/ISE/verilog/src/glbl.v'], 
+            [os.getcwd() + '/mca_tb.v'], 
             sim_bus='basil.utils.sim.SiLibUsbBusDriver',
-            include_dirs = ('/opt/Xilinx/14.7/ISE_DS/ISE/verilog/src/unisims',),
+            include_dirs = (qmca_dir,),
             extra = 'export SIMULATION_MODULES='+yaml.dump({'MCAFileDriver' : {'file_name': str(self.file_name)}})
             )
                 

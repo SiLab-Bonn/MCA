@@ -6,10 +6,11 @@
 
 `timescale 1ps / 1ps
 
-`include "../firmware/src/qmca.v"
-`include "../firmware/src/qmca_clk_gen.v"
 
-`include "tb/clock_multiplier.v"
+`include "firmware/src/qmca.v"
+`include "firmware/src/qmca_clk_gen.v"
+
+`include "utils/clock_multiplier.v"
 `include "utils/clock_divider.v"
 
 `include "utils/bus_to_ip.v"
@@ -39,18 +40,16 @@
 
 `include "utils/cdc_reset_sync.v"
 
-`include "ODDR.v"
-`include "DCM.v"
-`include "BUFG.v"
-`include "FD.v"
-`include "FDS.v"
-`include "INV.v"
-`include "OR2.v"
-`include "OR3.v"
-`include "IBUFDS.v"
-`include "IBUFGDS.v"
-`include "OBUFDS.v"
-`include "RAMB16_S1_S9.v"
+`include "utils/ODDR_sim.v"
+`include "utils/DCM_sim.v"
+`include "utils/BUFG_sim.v"
+
+`include "utils/RAMB16_S1_S9_sim.v"
+`include "utils/IBUFDS_sim.v"
+`include "utils/IBUFGDS_sim.v"
+`include "utils/OBUFDS_sim.v"
+
+`include "utils/fx2_to_bus.v"
 
 module adc_ser_model ( 
     input wire CLK, LOAD,
