@@ -136,15 +136,20 @@ module qmca (
 
     wire bus_rst;
     reset_gen reset_gen_i(.CLK(bus_clk), .RST(bus_rst));     
-    
+        
     // -------  BUS SYGNALING  ------- //
     wire [15:0] bus_add;
     wire bus_rd, bus_wr;
-     
-    assign bus_add = usb_add - 16'h4000;
-    assign bus_rd = ~usb_rd;
-    assign bus_wr = ~usb_wr;
-    
+    fx2_to_bus i_fx2_to_bus (
+        .ADD(usb_add),
+        .RD_B(usb_rd),
+        .WR_B(usb_wr),
+
+        .BUS_CLK(bus_clk),
+        .BUS_ADD(bus_add),
+        .BUS_RD(bus_rd),
+        .BUS_WR(bus_wr)
+    );
     
     // -------  USER MODULES  ------- //
      
