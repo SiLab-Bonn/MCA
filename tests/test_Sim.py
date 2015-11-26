@@ -62,13 +62,13 @@ class TestSim(unittest.TestCase):
 
         
         cocotb_compile_and_run(
-            [os.getcwd() + '/mca_tb.v'], 
+            [qmca_dir + '/tests/mca_tb.v'], 
             sim_bus='basil.utils.sim.SiLibUsbBusDriver',
             include_dirs = (qmca_dir,),
             extra = 'export SIMULATION_MODULES='+yaml.dump({'MCAFileDriver' : {'file_name': str(self.file_name)}})
             )
                 
-        with open('../qmca.yaml', 'r') as f:
+        with open(qmca_dir + '/qmca.yaml', 'r') as f:
             cnfg = yaml.load(f)
             
         cnfg['transfer_layer'][0]['type'] = 'SiSim'
