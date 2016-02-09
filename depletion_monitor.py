@@ -12,8 +12,8 @@ class depletion_monitor():
         self.minimum_delay = minimum_delay
         
         logging.info('Depletion monitor started!')
-        logging.info('bias_device is ', str(self.devices['bias'][0].get_name().rstrip()))
-        logging.info('nwellring_device is ', str(self.devices['nwellring'][0].get_name().rstrip()))
+        logging.info('bias_device is %s' % self.devices['bias'][0].get_name().rstrip())
+        logging.info('nwellring_device is %s' % self.devices['nwellring'][0].get_name().rstrip())
         
         filestr = 'depletion_' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d_%H:%M:%S')
         logfile =  filestr + '.log'
