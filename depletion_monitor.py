@@ -51,22 +51,41 @@ class depletion_monitor():
             time.sleep(0.5)
             if all([dev for dev in done.itervalues()]):
                 break
+            
+    def ramp_up(self, device, max_value):
+        step = 1 if (max_value > 0) else -1
+        while True:
+            value = int(self.get_voltage_reading(device))
+            if value != max_value:
+                device[0].set_voltage(value + step)
+                
     
     def deplete(self, bias_voltage, polarity=1):
         self.bias_voltage = bias_voltage
         self.polarity = polarity
         
         try:        
-            logging.info('Ramping up voltage')
-            self.devices['bias'][0].on()
-            self.devices['nwellring'][0].on()
-            for v in range(0, polarity * (bias_voltage + 1), polarity):
-                time.sleep(0.5)
-                self.devices['bias'][0].set_voltage(v)
-                self.devices['nwellring'][0].set_voltage(v)
+            bias_actual_voltage = self.get_voltage_reading(self.devices['bias'])
+            nwell_actual_voltage = self.get_voltage_reading(self.devices['nwellring'])
+            
+            #TODO Angleichen?
+            
+            actual_voltage = int(bias_actual_voltage)
+            
+            if ((polarity == -1) and (actual_voltage > (bias_voltage * polarity))) or ((polarity == 1) and (actual_voltage < bias_voltage)):
+                for v in range(actual_voltage, polarity * (bias_voltage + 1), polarity):
+                    time.sleep(0.5)
+                    self.devices['bias'][0].set_voltage(v)
+                    self.devices['nwellring'][0].set_voltage(v)
+                    
+            else:
+                for v in range(actual_voltage, polarity * (bias_voltage + 1), polarity * -1):
+                    time.sleep(0.5)
+                    self.devices['bias'][0].set_voltage(v)
+                    self.devices['nwellring'][0].set_voltage(v)
         
         except Exception as e:
-            logging.error(sys.exc_info()[0] + ': ' + e)
+            logging.error('%s: %s' % (sys.exc_info()[0], e))
             logging.error('An error occurred! Ramping down Voltage!')
             self.ramp_down()
                 
