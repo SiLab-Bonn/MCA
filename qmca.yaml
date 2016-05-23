@@ -1,39 +1,39 @@
----
 name    : qmca 
 version : 0.01
 
 transfer_layer:
-  - name  : usb
+  - name  : USB
     type  : SiUsb
-    bit_file : "./firmware/ise/qmca.bit"
-    avoid_download : True
+    init:
+        bit_file : /home/michael/git/MCA/firmware/ise/qmca.bit
+        avoid_download : True
 
 hw_drivers:
   - name      : GPAC
     type      : GPAC
-    interface : usb
+    interface : USB
     base_addr : 0x00000
     
   - name      : SPI_FADC
     type      : spi
-    interface : usb
+    interface : USB
     base_addr : 0x10000
     mem_bytes : 2
 
   - name      : GPIO_TH
     type      : gpio
-    interface : usb
+    interface : USB
     base_addr : 0x10100
     size      : 16
 
   - name      : fadc0_rx
     type      : fadc_rx
-    interface : usb
+    interface : USB
     base_addr : 0x10030
 
   - name      : DATA_FIFO
     type      : sram_fifo
-    interface : usb
+    interface : USB
     base_addr : 0x10020 
     base_data_addr: 0x0001000000000000
 
