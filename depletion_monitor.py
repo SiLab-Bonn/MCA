@@ -7,13 +7,15 @@ import matplotlib.pyplot as plt
 
 
 class depletion_monitor():
-    def __init__(self, devices, nwellring_current_limit=0.001, minimum_delay=0.1):
+    def __init__(self, devices, simple, nwellring_current_limit=0.001, minimum_delay=0.1):
         self.devices = devices
+        self.simple = simple
         self.minimum_delay = minimum_delay
         
         logging.info('Depletion monitor started!')
         logging.info('bias_device is %s' % self.devices['bias'][0].get_name().rstrip())
-        logging.info('nwellring_device is %s' % self.devices['nwellring'][0].get_name().rstrip())
+        if not self.simple:
+            logging.info('nwellring_device is %s' % self.devices['nwellring'][0].get_name().rstrip())
         
         filestr = 'depletion_' + datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d_%H:%M:%S')
         logfile =  filestr + '.log'
@@ -22,7 +24,8 @@ class depletion_monitor():
         
         logging.info('Reset devices.')
         self.ramp_down()
-        self.devices['nwellring'][0].set_current_limit(nwellring_current_limit)
+        if not self.simple:
+            self.devices['nwellring'][0].set_current_limit(nwellring_current_limit)
         self.devices['bias'][0].set_current_limit(0.105)
         
     
@@ -66,7 +69,8 @@ class depletion_monitor():
         
         try:        
             bias_actual_voltage = self.get_voltage_reading(self.devices['bias'])
-            nwell_actual_voltage = self.get_voltage_reading(self.devices['nwellring'])
+            if not self.simple:
+                nwell_actual_voltage = self.get_voltage_reading(self.devices['nwellring'])
             
             #TODO Angleichen?
             
@@ -76,13 +80,15 @@ class depletion_monitor():
                 for v in range(actual_voltage, polarity * (bias_voltage + 1), polarity):
                     time.sleep(0.5)
                     self.devices['bias'][0].set_voltage(v)
-                    self.devices['nwellring'][0].set_voltage(v)
+                    if not self.simple:
+                        self.devices['nwellring'][0].set_voltage(v)
                     
             else:
                 for v in range(actual_voltage, polarity * (bias_voltage + 1), polarity * -1):
                     time.sleep(0.5)
                     self.devices['bias'][0].set_voltage(v)
-                    self.devices['nwellring'][0].set_voltage(v)
+                    if not self.simple:
+                        self.devices['nwellring'][0].set_voltage(v)
         
         except Exception as e:
             logging.error('%s: %s' % (sys.exc_info()[0], e))
@@ -119,7 +125,8 @@ class depletion_monitor():
                 event.append(datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S'))
                 event.append(time.time() - start)
                 
-                event.append(self.get_current_reading(self.devices['nwellring']))
+                if not self.simple:
+                    event.append(self.get_current_reading(self.devices['nwellring']))
                 event.append(self.get_current_reading(self.devices['bias']))
                 
                 print event
@@ -130,14 +137,18 @@ class depletion_monitor():
                     if record_nwellcurrent:
                         dat.writerow([event[0], event[1], event[2], event[3]])
                     else:
-                        dat.writerow([event[0], event[1], event[3]])
+                        if not self.simple:
+                            dat.writerow([event[0], event[1], event[3]])
+                        else:
+                            dat.writerow([event[0], event[1], event[2]])
                 
                 if loop > 2:
                     x,y1,y2 = [], [], []
                     for ev in data:
                         x.append(ev[1])
                         y1.append(ev[2])
-                        y2.append(ev[3])
+                        if not self.simple:
+                            y2.append(ev[3])
                           
                     
                     plt.cla()
@@ -153,7 +164,8 @@ class depletion_monitor():
                     axarr[1].set_ylabel('Current [A]')
                     
                     axarr[0].plot(x, y1, 'r-')
-                    axarr[1].plot(x, y2, 'b-')
+                    if not self.simple:
+                        axarr[1].plot(x, y2, 'b-')
                     plt.pause(0.1)
                 
                 time.sleep(waittime)
@@ -162,7 +174,7 @@ class depletion_monitor():
             logging.error(sys.exc_info()[0] + ': ' + e)
             logging.error('An error occurred! Ramping down Voltage!')
             self.ramp_down()
-                
+                 
         except KeyboardInterrupt:
             logging.info('Interrupt detected! Ramping down voltage...')
             self.ramp_down()
@@ -175,19 +187,23 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='LF Diodes Depletion Monitor')
     parser.add_argument('-y', '--yaml', help='Sourcemeter YAML file', required=False, default='devices.yaml')
-    parser.add_argument('-b', '--biasdev', help='Bias device name in YAML file', required=False, default='Sourcemeter2')
-    parser.add_argument('-n', '--nwelldev', help='NWell ring device name in YAML file', required=False, default='Sourcemeter1')
+    parser.add_argument('-s', '--simple', help='Use only one Sourcemeter to apply bias voltage, leave n-well ring floating', action='store_true', required=False, default=True)
+    parser.add_argument('-b', '--biasdev', help='Bias device name in YAML file', required=False, default='Sourcemeter1')
+    parser.add_argument('-n', '--nwelldev', help='NWell ring device name in YAML file', required=False, default='Sourcemeter2')
     parser.add_argument('-v', '--voltage', help='Bias voltage', required=True)
-    parser.add_argument('-r', '--recnwellcurrent', help='Record also the current to the NWellRing?', required=False, default='False')
+    parser.add_argument('-r', '--recnwellcurrent', help='Record also the current to the NWellRing?', action='store_true', required=False, default=False)
     args = parser.parse_args()
     
     dut = Dut(args.yaml)
     dut.init()
     
-    devices = {'bias':[dut[args.biasdev], 'keithley_2410'],
-               'nwellring':[dut[args.nwelldev], 'keithley_2410']}
+    if args.simple:
+        devices = {'bias':[dut[args.biasdev], 'keithley_2410']}
+    else:
+        devices = {'bias':[dut[args.biasdev], 'keithley_2410'],
+                   'nwellring':[dut[args.nwelldev], 'keithley_2410']}
     
-    mon = depletion_monitor(devices)
+    mon = depletion_monitor(devices, simple=args.simple)
     
     mon.deplete(bias_voltage=int(args.voltage))
     mon.monitor_current(record_nwellcurrent=bool(args.recnwellcurrent))
