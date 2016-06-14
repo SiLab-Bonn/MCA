@@ -44,6 +44,8 @@ class DataWorker(QtCore.QObject):
         self.socket_addr = socket_addr
         self.context = zmq.Context()
         self.socket_pull = self.context.socket(zmq.PULL)
+        self.socket_pull.setsockopt(zmq.RCVHWM, 10)
+        self.socket_pull.setsockopt(zmq.LINGER, 500)
         self.socket_pull.connect(self.socket_addr)
         self.poller = zmq.Poller()  # poll needed to be able to return QThread
         self.poller.register(self.socket_pull, zmq.POLLIN)

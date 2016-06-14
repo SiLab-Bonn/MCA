@@ -46,6 +46,8 @@ class qmca(object):
         
         # Setup ZeroMQ socket    
         self.socket = zmq.Context().socket(zmq.PUSH)
+        self.socket.setsockopt(zmq.SNDHWM, 10)
+        self.socket.setsockopt(zmq.LINGER, 500)
         self.socket.bind(socket_addr)
         
         # Setup Dut
