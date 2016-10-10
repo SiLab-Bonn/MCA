@@ -13,6 +13,8 @@ hw_drivers:
     type      : GPAC
     interface : USB
     base_addr : 0x00000
+    init:
+        no_calibration : False
     
   - name      : SPI_FADC
     type      : spi
