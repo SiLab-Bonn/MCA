@@ -14,7 +14,7 @@ import sys
 import numpy as np
 from tempfile import NamedTemporaryFile
 import random
-
+import time
 import sys
 qmca_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) #../
 sys.path.append( qmca_dir ) 
@@ -72,7 +72,7 @@ class TestSim(unittest.TestCase):
             cnfg = yaml.load(f)
             
         cnfg['transfer_layer'][0]['type'] = 'SiSim'
-        cnfg['hw_drivers'][0]['no_calibration'] = True
+        cnfg['hw_drivers'][0]['init']['no_calibration'] = True
         
         # this should be based on some search
         #cnfg['transfer_layer'].remove(cnfg['transfer_layer'][1])
@@ -114,6 +114,8 @@ class TestSim(unittest.TestCase):
         self.assertTrue(comp.all())
         
     def tearDown(self):
+        self.my_qmca.dut.close()
+        time.sleep(5)
         cocotb_compile_clean()
 
 if __name__ == '__main__':
