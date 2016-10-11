@@ -9,7 +9,6 @@
 import sys
 import zmq
 import numpy as np
-from basil import dut
 from PyQt4 import Qt
 from PyQt4.QtCore import pyqtSlot
 import pyqtgraph as pg
@@ -19,10 +18,6 @@ import pyqtgraph.ptime as ptime
 from threading import Event
 
 import psutil
-
-from pybar.analysis.RawDataConverter.data_interpreter import PyDataInterpreter
-from pybar.analysis.RawDataConverter.data_histograming import PyDataHistograming
-
 
 
 class DataWorker(QtCore.QObject):

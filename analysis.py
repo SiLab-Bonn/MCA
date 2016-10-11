@@ -1,8 +1,6 @@
 import tables
 import numpy as np
 import os
-import csv
-from collections import deque
 from scipy.optimize import curve_fit
 import pylandau as landau
 import matplotlib.pyplot as plt
