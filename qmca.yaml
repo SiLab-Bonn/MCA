@@ -5,7 +5,7 @@ transfer_layer:
   - name  : USB
     type  : SiUsb
     init:
-        bit_file : /home/michael/git/MCA/firmware/ise/qmca.bit
+        bit_file : ./firmware/ise/qmca.bit
         avoid_download : True
 
 hw_drivers:
